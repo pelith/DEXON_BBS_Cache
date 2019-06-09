@@ -9,6 +9,7 @@ import { pRateLimit } from 'p-ratelimit'
 import Dett from './dett.js'
 import fs from 'fs'
 import path from 'path'
+import rsync from 'rsyncwrapper'
 import { parseText, awaitTx } from './utils.js'
 
 import keythereum from 'keythereum'
@@ -28,16 +29,24 @@ const rpcRateLimiter = pRateLimit({
 
 const outputPath = 'dist'
 const outputJsonPath = path.join(outputPath, 'output.json')
-const cachePath = 'gh-pages/s'
+const outputCachePath = path.join(outputPath, 's')
+const outputCacheTemplatePath = path.join(outputPath, 'cache.html')
+
+const ghPath = 'gh-pages'
+const ghCachePath = path.join(ghPath, 's')
+const ghCacheTemplatePath = path.join(ghPath, 'cache.html')
 
 let shortLinks = {}
 let milestones = []
 let indexes = []
 
-const generateShortLinkCachePage = async (tx, shortLink) => {
+
+/// chek cache content to check is that file has been update?
+
+const generateShortLinkCachePage = async (tx) => {
   const article = await dett.getArticle(tx)
   const title = article.title
-  const url = 'https://dett.cc/' + shortLink + '.html'
+  const url = 'https://dett.cc/' + shortLinks[tx] + '.html'
   const description = parseText(article.content, 160).replace(/\n|\r/g, ' ')
   const cacheMeta = { 'Cache - DEXON BBS': title,
                       'https://dett.cc/cache.html': url,
@@ -49,7 +58,7 @@ const generateShortLinkCachePage = async (tx, shortLink) => {
     return cacheMeta[matched]
   });
 
-  const filePath = path.join(cachePath, shortLink + '.html')
+  const filePath = path.join(outputCachePath, shortLinks[tx] + '.html')
   await fs.writeFileSync(filePath, cacheFile, 'utf8')
 }
 
@@ -115,8 +124,6 @@ const clone = async () => {
 }
 
 const syncContract = async () => {
-  dett = new Dett()
-  await dett.init(web3, Web3)
   const events = await dett.BBSCache.getPastEvents('Link', {fromBlock : 0})
 
   for (const event of events) {
@@ -129,6 +136,14 @@ const syncContract = async () => {
   indexes = await dett.BBSCache.methods.getIndexes().call()
   saveLocalStorage()
   console.log('#Sync Done')
+}
+
+const checkSync =  async () => {
+  const _indexes = await dett.BBSCache.methods.getIndexes().call()
+  if (!_indexes.every(e => indexes.includes(e))) {
+    console.log('#Start Sync')
+    await syncContract()
+  }
 }
 
 const saveLocalStorage = () => {
@@ -161,9 +176,26 @@ const loadLocalStorage = () => {
   }
 }
 
-export const generateCacheAndShortLink = async () => {
+const rsyncCopyDir = (src, dest) => {
+  return new Promise((resolve, reject) => {
+    rsync({
+      src: path.join(src, '/'),
+      dest: dest,
+      recursive: true,
+    }, (error, stdout, stderr, cmd) => {
+      if (error) {
+        // failed
+        console.log(error.message)
+        reject(error.message)
+      } else {
+        // success
+        resolve()
+      }
+    })
+  })
+}
 
-  loadLocalStorage()
+export const generateCacheAndShortLink = async () => {
 
   // ############################################
   // #### init Dett
@@ -171,10 +203,21 @@ export const generateCacheAndShortLink = async () => {
   dett = new Dett()
   await dett.init(web3, Web3)
 
+  loadLocalStorage()
+
+  await checkSync()
+
   // cache init
   const account = dett.cacheweb3.eth.accounts.privateKeyToAccount(`0x${privateKey.toString('hex')}`)
   contractOwner = account.address
   dett.cacheweb3.eth.accounts.wallet.add(account)
+
+  // await dett.BBSCache.methods.clearMilestone().send({
+  //   from: contractOwner,
+  //   // gasPrice: 6000000000,
+  //   gas: 210000,
+  // })
+
 
   let fromBlock = dett.fromBlock
 
@@ -224,38 +267,55 @@ export const generateCacheAndShortLink = async () => {
 
   // ############################################
   // #### Generate Cache Page to gh-pages folder
+  // #### 1.compare local and remote cache file, if not means should regenerate all shortlink cache file
 
   // clone dett gh-page branch
-  await clone()
+
+  if (fs.existsSync(ghPath) && fs.lstatSync(ghPath).isDirectory()) {
+    await gitP(__dirname + '/../gh-pages/').fetch()
+    const status = await gitP(__dirname + '/../gh-pages/').status()
+    if (status.behind || status.ahead)
+      await clone()
+  }
+  else
+    await clone()
 
   // if exist create cache output folder
-  if (!(fs.existsSync(cachePath) && fs.lstatSync(cachePath).isDirectory()))
-    fs.mkdirSync(cachePath)
+  if (!(fs.existsSync(outputCachePath) && fs.lstatSync(outputCachePath).isDirectory()))
+    fs.mkdirSync(outputCachePath)
 
-  for (const tx of Object.keys(shortLinks))
-    await generateShortLinkCachePage(tx, shortLinks[tx])
+  if (!(fs.existsSync(outputCacheTemplatePath) && fs.lstatSync(outputCacheTemplatePath).isFile()))
+    fs.copyFileSync(ghCacheTemplatePath, outputCacheTemplatePath)
+
+  // 0 = equal, 1 = not equal
+  const checkUpdated = Buffer.compare(fs.readFileSync(ghCacheTemplatePath), fs.readFileSync(outputCacheTemplatePath))
+
+  if (checkUpdated) fs.copyFileSync(ghCacheTemplatePath, outputCacheTemplatePath)
+
+  for (const tx of Object.keys(shortLinks)) {
+    const shortLinkPath = path.join(outputCachePath, shortLinks[tx]+'.html')
+
+    if (checkUpdated || !(fs.existsSync(shortLinkPath) && fs.lstatSync(shortLinkPath).isFile()))
+      await generateShortLinkCachePage(tx, shortLinks[tx])
+  }
   console.log('#Generate Cache Page Done.')
-
 
   // ############################################
   // #### Commit & push
 
-  git(__dirname + '/../gh-pages/')
-  .add('.')
-  .commit("Add cache page")
-  .push(['-u', 'origin', 'gh-pages'], () => console.log('#Push Done.'));
+  await rsyncCopyDir(outputCachePath, ghCachePath)
 
-
-  // await dett.BBSCache.methods.clearMilestone().send({
-  //   from: contractOwner,
-  //   // gasPrice: 6000000000,
-  //   gas: 210000,
-  // })
+  await gitP(__dirname + '/../gh-pages/').add('.')
+  await gitP(__dirname + '/../gh-pages/').commit("Add cache page")
+  await gitP(__dirname + '/../gh-pages/').push(['-u', 'origin', 'gh-pages'])
+        .then(console.log('#Push Done.'))
 }
 
 const main = async () => {
-  // syncContract()
+  const hrstart = process.hrtime()
   await generateCacheAndShortLink()
+  const hrend = process.hrtime(hrstart)
+  console.info(`Execution time (hr): %ds %dms`, hrend[0], hrend[1] / 1000000)
 }
 
 main()
