@@ -1180,7 +1180,7 @@ cliui@^5.0.0:
 
 "cloudflare-purge-cache@git+https://git@github.com/SiriusTsou/cloudflare-purge-cache.git":
   version "1.0.0"
-  resolved "git+https://git@github.com/SiriusTsou/cloudflare-purge-cache.git#861cd05e37fa73d05f4bd8aaaf20f1975d918d94"
+  resolved "git+https://git@github.com/SiriusTsou/cloudflare-purge-cache.git#853c69ab4f31a74779c896038bf3b4c8c2e21274"
   dependencies:
     r2 "^2.0.1"
     yargs "^13.2.4"
