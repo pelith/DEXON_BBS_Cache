@@ -68,7 +68,7 @@ export const start = async () => {
   // ############################################
   // #### Generate Cache Page and ShortLink
 
-  await generateCacheAndShortLink()
+  await generateCacheAndShortLink(true)
 
   // ############################################
   // #### Commit & push

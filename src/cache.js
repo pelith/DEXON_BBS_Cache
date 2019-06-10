@@ -10,9 +10,6 @@ import ShortURL from './shortURL.js'
 import { parseText, awaitTx } from './utils.js'
 
 import keythereum from 'keythereum'
-import keystore from '../keystore.json'
-const keypassword = process.env.KEY_PASSWORD
-const privateKey = keythereum.recover(keypassword, keystore)
 
 const web3 = new Web3(new Web3.providers.WebsocketProvider('wss://mainnet-rpc.dexon.org/ws'))
 let dett = null
@@ -138,7 +135,7 @@ const loadLocalStorage = () => {
 }
 
 
-export const generateCacheAndShortLink = async () => {
+export const generateCacheAndShortLink = async (updateAccess) => {
   // ############################################
   // #### init Dett
 
@@ -149,10 +146,15 @@ export const generateCacheAndShortLink = async () => {
 
   await checkSync()
 
-  // cache init
-  const account = dett.cacheweb3.eth.accounts.privateKeyToAccount(`0x${privateKey.toString('hex')}`)
-  contractOwner = account.address
-  dett.cacheweb3.eth.accounts.wallet.add(account)
+  if (updateAccess) {
+    const keystore = JSON.parse(fs.readFileSync('keystore.json'))
+    const keypassword = process.env.KEY_PASSWORD
+    const privateKey = keythereum.recover(keypassword, keystore)
+
+    const account = dett.cacheweb3.eth.accounts.privateKeyToAccount(`0x${privateKey.toString('hex')}`)
+    contractOwner = account.address
+    dett.cacheweb3.eth.accounts.wallet.add(account)
+  }
 
   let fromBlock = dett.fromBlock
 
@@ -179,7 +181,8 @@ export const generateCacheAndShortLink = async () => {
 
     // generate short links
     if (!+(link))
-      await rpcRateLimiter(() => addShortLink(tx, blockNumber))
+      if (updateAccess)
+        await rpcRateLimiter(() => addShortLink(tx, blockNumber))
 
     // generate milestone block index
     if (last === blockNumber) {
@@ -193,7 +196,8 @@ export const generateCacheAndShortLink = async () => {
     if ((i+1) % dett.perPageLength === 0) {
       if (!milestones.includes(blockNumber)){
         if (!(indexes[milestones.indexOf(blockNumber)] === index+''))
-          await rpcRateLimiter(() => addMilestone(blockNumber, index))
+          if (updateAccess)
+            await rpcRateLimiter(() => addMilestone(blockNumber, index))
       }
     }
   }
@@ -222,7 +226,7 @@ export const generateCacheAndShortLink = async () => {
 }
 
 const main = async () => {
-  await generateCacheAndShortLink()
+  await generateCacheAndShortLink(false)
 }
 
 if (!module.parent.parent)
