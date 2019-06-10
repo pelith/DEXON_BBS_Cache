@@ -9,7 +9,7 @@
         "start": "npm run build && node bin/index",
         "dev-server": "npm run build && node bin/dev-server",
         "server": "npm run build && node bin/server",
-        "cache": "npm run build && node bin/cache"// for cicle-ci
+        "cache": "npm run build && node bin/cache"
     },
     "author": [
         "SiriusTsou",
