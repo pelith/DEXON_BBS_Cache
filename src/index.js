@@ -40,9 +40,6 @@ let shortLinks = {}
 let milestones = []
 let indexes = []
 
-
-/// chek cache content to check is that file has been update?
-
 const generateShortLinkCachePage = async (tx) => {
   const article = await dett.getArticle(tx)
   const title = article.title
@@ -50,7 +47,8 @@ const generateShortLinkCachePage = async (tx) => {
   const description = parseText(article.content, 160).replace(/\n|\r/g, ' ')
   const cacheMeta = { 'Cache - DEXON BBS': title,
                       'https://dett.cc/cache.html': url,
-                      'Cache Cache Cache Cache Cache': description }
+                      'Cache Cache Cache Cache Cache': description,
+                      'dett:tx:content': tx }
   const reg = new RegExp(Object.keys(cacheMeta).join("|"),"gi")
   const template = fs.readFileSync('gh-pages/cache.html', 'utf-8')
 
@@ -84,7 +82,7 @@ class ShortURL {
 ShortURL.alphabet = '23456789bcdfghjkmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ'
 ShortURL.base = ShortURL.alphabet.length;
 
-const generateShortLink = async (tx) => {
+const addShortLink = async (tx) => {
   const shortLink = ShortURL.encode(dett.cacheweb3.utils.hexToNumber(tx.substr(0,10))).padStart(6,'0')
   const hexId = dett.cacheweb3.utils.padLeft(dett.cacheweb3.utils.toHex(shortLink), 64)
 
@@ -212,13 +210,6 @@ export const generateCacheAndShortLink = async () => {
   contractOwner = account.address
   dett.cacheweb3.eth.accounts.wallet.add(account)
 
-  // await dett.BBSCache.methods.clearMilestone().send({
-  //   from: contractOwner,
-  //   // gasPrice: 6000000000,
-  //   gas: 210000,
-  // })
-
-
   let fromBlock = dett.fromBlock
 
   const hasLocalMilestones = milestones.length && indexes.length
@@ -244,7 +235,7 @@ export const generateCacheAndShortLink = async () => {
 
     // generate short links
     if (!+(link))
-      await rpcRateLimiter(() => generateShortLink(tx, blockNumber))
+      await rpcRateLimiter(() => addShortLink(tx, blockNumber))
 
     // generate milestone block index
     if (last === blockNumber) {
@@ -319,3 +310,16 @@ const main = async () => {
 }
 
 main()
+
+// feature && issue
+// 1.short link hash collsoin?
+// 2.log
+// 3.master env set cache network
+// 4.compress porblem
+
+// clean cache
+// await dett.BBSCache.methods.clearMilestone().send({
+//   from: contractOwner,
+//   // gasPrice: 6000000000,
+//   gas: 210000,
+// })
