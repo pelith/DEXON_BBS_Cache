@@ -5,8 +5,10 @@
     "scripts": {
         "dev": "npm run build && node bin/dev",
         "dev-server": "npm run build && node bin/dev-server",
-        "build": "npx babel src/ -d lib/",
-        "start": "npm run build && node bin/index"
+        "build": "npm run clean && npx babel src/ -d lib/",
+        "start": "npm run build && node bin/index",
+        "server": "npm run build && node bin/server",
+        "clean": "rm -rf lib/"
     },
     "author": [
         "SiriusTsou",
