@@ -3,12 +3,13 @@
     "version": "1.0.0",
     "description": "",
     "scripts": {
-        "dev": "npm run build && node bin/dev",
-        "dev-server": "npm run build && node bin/dev-server",
         "build": "npm run clean && babel src/ -d lib/",
+        "clean": "rm -rf lib/",
+        "dev": "npm run build && node bin/dev",
         "start": "npm run build && node bin/index",
+        "dev-server": "npm run build && node bin/dev-server",
         "server": "npm run build && node bin/server",
-        "clean": "rm -rf lib/"
+        "cache": "npm run build && node bin/cache"// for cicle-ci
     },
     "author": [
         "SiriusTsou",

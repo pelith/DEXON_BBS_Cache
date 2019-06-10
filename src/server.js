@@ -1,10 +1,10 @@
-import {generateCacheAndShortLink} from './index.js'
+import {start} from './index.js'
 
 const main = async () => {
-  await generateCacheAndShortLink()
+  await start()
 
   const intervalObj = setInterval(async () => {
-    await generateCacheAndShortLink()
+    await start()
   }, 0.5*60*1000)
   // clearInterval(intervalObj)
 }
