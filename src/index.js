@@ -9,9 +9,10 @@ import { pRateLimit } from 'p-ratelimit'
 import fs from 'fs'
 import path from 'path'
 import rsync from 'rsyncwrapper'
+import cloudflarePurgeCache from 'cloudflare-purge-cache'
 
 import Dett from './dett.js'
-import shortURL from './shortURL.js'
+import ShortURL from './shortURL.js'
 import { parseText, awaitTx } from './utils.js'
 
 import keythereum from 'keythereum'
@@ -281,6 +282,8 @@ export const generateCacheAndShortLink = async () => {
   await gitP(__dirname + '/../gh-pages/').commit("Add cache page")
   await gitP(__dirname + '/../gh-pages/').push(['-u', 'origin', 'gh-pages'])
         .then(console.log('#Push Done.'))
+
+  await cloudflarePurgeCache(process.env.CF_EMAIL, process.env.CF_KEY, process.env.CF_ZONE_ID)
 
   const hrend = process.hrtime(hrstart)
   console.info(`Execution time (hr): %ds %dms`, hrend[0], hrend[1] / 1000000)
