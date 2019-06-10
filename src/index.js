@@ -6,10 +6,12 @@ import gitP from 'simple-git/promise'
 import rimraf from 'rimraf'
 
 import { pRateLimit } from 'p-ratelimit'
-import Dett from './dett.js'
 import fs from 'fs'
 import path from 'path'
 import rsync from 'rsyncwrapper'
+
+import Dett from './dett.js'
+import shortURL from './shortURL.js'
 import { parseText, awaitTx } from './utils.js'
 
 import keythereum from 'keythereum'
@@ -59,28 +61,6 @@ const generateShortLinkCachePage = async (tx) => {
   const filePath = path.join(outputCachePath, shortLinks[tx] + '.html')
   await fs.writeFileSync(filePath, cacheFile, 'utf8')
 }
-
-// is hash collison posible(?)
-class ShortURL {
-  static encode(num) {
-    let str = ''
-    while (num > 0) {
-      str = ShortURL.alphabet.charAt(num % ShortURL.base) + str
-      num = Math.floor(num / ShortURL.base)
-    }
-    return str
-  }
-
-  static decode(str) {
-    let num = 0
-    for (let i = 0; i < str.length; i++) {
-      num = num * ShortURL.base + ShortURL.alphabet.indexOf(str.charAt(i))
-    }
-    return num
-  }
-}
-ShortURL.alphabet = '23456789bcdfghjkmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ'
-ShortURL.base = ShortURL.alphabet.length;
 
 const addShortLink = async (tx) => {
   const shortLink = ShortURL.encode(dett.cacheweb3.utils.hexToNumber(tx.substr(0,10))).padStart(6,'0')
@@ -194,6 +174,7 @@ const rsyncCopyDir = (src, dest) => {
 }
 
 export const generateCacheAndShortLink = async () => {
+  const hrstart = process.hrtime()
 
   // ############################################
   // #### init Dett
@@ -300,20 +281,19 @@ export const generateCacheAndShortLink = async () => {
   await gitP(__dirname + '/../gh-pages/').commit("Add cache page")
   await gitP(__dirname + '/../gh-pages/').push(['-u', 'origin', 'gh-pages'])
         .then(console.log('#Push Done.'))
+
+  const hrend = process.hrtime(hrstart)
+  console.info(`Execution time (hr): %ds %dms`, hrend[0], hrend[1] / 1000000)
 }
 
 const main = async () => {
-  const hrstart = process.hrtime()
   await generateCacheAndShortLink()
-  const hrend = process.hrtime(hrstart)
-  console.info(`Execution time (hr): %ds %dms`, hrend[0], hrend[1] / 1000000)
 }
 
 if (!module.parent.parent)
   main()
 
 // feature && issue
-// 1.short link hash collsoin?
 // 2.log
 // 3.master env set cache network
 // 4.compress porblem

@@ -29,7 +29,7 @@ const main = async () => {
 
   const intervalObj = setInterval(async () => {
     await generateCacheAndShortLink()
-  }, 2*60*1000)
+  }, 0.5*60*1000)
   // clearInterval(intervalObj)
 }
 
