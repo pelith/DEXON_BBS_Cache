@@ -227,6 +227,7 @@ export const generateCacheAndShortLink = async (updateAccess) => {
 
 const main = async () => {
   await generateCacheAndShortLink(false)
+  process.exit(0)
 }
 
 if (!module.parent.parent)
