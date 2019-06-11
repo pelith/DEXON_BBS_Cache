@@ -1,6 +1,7 @@
 import Web3 from 'web3'
-import fs from 'fs'
 import path from 'path'
+import fs from 'fs'
+import crypto from 'crypto'
 
 import Dett from './dett.js'
 import { parseText } from './utils.js'
@@ -17,18 +18,34 @@ const ghPath = 'gh-pages'
 const ghCacheTemplatePath = path.join(ghPath, 'cache.html')
 
 let shortLinks = {}
+let jsonData = {}
+
+function checksum(str, algorithm, encoding) {
+  return  crypto
+          .createHash(algorithm || 'sha256')
+          .update(str, 'utf8')
+          .digest(encoding || 'hex');
+}
 
 const loadLocalStorage = () => {
   if (!(fs.existsSync(outputJsonPath) && fs.lstatSync(outputJsonPath).isFile()))
     throw "output file is not exist"
 
   const rawData = fs.readFileSync(outputJsonPath)
-  const jsonData = JSON.parse(rawData)
+  jsonData = JSON.parse(rawData)
 
   if (!jsonData.hasOwnProperty('shortLinks'))
     throw "invalid storage file"
 
   shortLinks = jsonData.shortLinks
+
+  if (!jsonData.hasOwnProperty('checksum'))
+    jsonData.checksum = ""
+}
+
+const saveLocalStorage = () => {
+  const rawData = JSON.stringify(jsonData, null, 4)
+  fs.writeFileSync(outputJsonPath, rawData, 'utf8');
 }
 
 const generateShortLinkCachePage = async (tx) => {
@@ -41,7 +58,7 @@ const generateShortLinkCachePage = async (tx) => {
                       'Cache Cache Cache Cache Cache': description,
                       'dett:tx:content': tx }
   const reg = new RegExp(Object.keys(cacheMeta).join("|"),"gi")
-  const template = fs.readFileSync('gh-pages/cache.html', 'utf-8')
+  const template = fs.readFileSync(ghCacheTemplatePath, 'utf-8')
 
   const cacheFile = template.replace(reg, (matched) => {
     return cacheMeta[matched]
@@ -61,20 +78,21 @@ const build = async () => {
   if (!(fs.existsSync(outputCachePath) && fs.lstatSync(outputCachePath).isDirectory()))
     fs.mkdirSync(outputCachePath)
 
-  if (!(fs.existsSync(outputCacheTemplatePath) && fs.lstatSync(outputCacheTemplatePath).isFile()))
-    fs.copyFileSync(ghCacheTemplatePath, outputCacheTemplatePath)
+  const _checksum = checksum(fs.readFileSync(ghCacheTemplatePath))
+  const shouldUpdate = _checksum !== jsonData.checksum
 
-  // 0 = equal, 1 = not equal
-  const checkUpdated = Buffer.compare(fs.readFileSync(ghCacheTemplatePath), fs.readFileSync(outputCacheTemplatePath))
-
-  if (checkUpdated) fs.copyFileSync(ghCacheTemplatePath, outputCacheTemplatePath)
+  if (shouldUpdate)
+    jsonData.checksum = _checksum
 
   for (const tx of Object.keys(shortLinks)) {
     const shortLinkPath = path.join(outputCachePath, shortLinks[tx]+'.html')
 
-    if (checkUpdated || !(fs.existsSync(shortLinkPath) && fs.lstatSync(shortLinkPath).isFile()))
+    if (shouldUpdate || !(fs.existsSync(shortLinkPath) && fs.lstatSync(shortLinkPath).isFile()))
       await generateShortLinkCachePage(tx, shortLinks[tx])
   }
+
+  saveLocalStorage()
+
   console.log('#Generate Cache Page Done.')
 }
 

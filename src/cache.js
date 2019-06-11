@@ -24,6 +24,7 @@ const rpcRateLimiter = pRateLimit({
 const outputPath = 'dist'
 const outputJsonPath = path.join(outputPath, 'output.json')
 
+let jsonData = {}
 let shortLinks = {}
 let milestones = []
 let indexes = []
@@ -84,8 +85,12 @@ const saveLocalStorage = () => {
   if (!(fs.existsSync(outputPath) && fs.lstatSync(outputPath).isDirectory()))
     fs.mkdirSync(outputPath)
 
-  const jsonData = JSON.stringify({'shortLinks':shortLinks,'milestones':milestones,'indexes':indexes}, null, 4)
-  fs.writeFileSync(outputJsonPath, jsonData, 'utf8');
+  jsonData.shortLinks = shortLinks
+  jsonData.milestones = milestones
+  jsonData.indexes = indexes
+
+  const rawData = JSON.stringify(jsonData, null, 4)
+  fs.writeFileSync(outputJsonPath, rawData, 'utf8');
 }
 
 const loadLocalStorage = () => {
@@ -96,7 +101,7 @@ const loadLocalStorage = () => {
   // check dist/output.json
   if (fs.existsSync(outputJsonPath) && fs.lstatSync(outputJsonPath).isFile()) {
     const rawData = fs.readFileSync(outputJsonPath)
-    const jsonData = JSON.parse(rawData)
+    jsonData = JSON.parse(rawData)
 
     if (jsonData.hasOwnProperty('shortLinks'))
       shortLinks = jsonData.shortLinks
