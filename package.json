@@ -26,12 +26,12 @@
         "path": "^0.12.7"
     },
     "dependencies": {
+        "cloudflare-purge-cache": "^1.1.0",
         "dotenv": "^8.0.0",
         "keythereum": "^1.0.4",
         "linkify-it": "^2.1.0",
         "morgan": "^1.9.1",
         "p-ratelimit": "^0.10.0",
-        "cloudflare-purge-cache": "git+https://git@github.com/SiriusTsou/cloudflare-purge-cache.git",
         "rimraf": "^2.6.3",
         "rsyncwrapper": "^3.0.1",
         "simple-git": "^1.113.0",
