@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import rimraf from 'rimraf'
 
 import git from 'simple-git'
 import gitP from 'simple-git/promise'
@@ -8,17 +9,15 @@ import rsync from 'rsyncwrapper'
 import dotenv from 'dotenv/config'
 import cloudflarePurgeCache from 'cloudflare-purge-cache'
 
-import {generateCacheAndShortLink} from './cache.js'
+import {cache} from './cache.js'
+import {build} from './build.js'
 
 const outputPath = 'dist'
 const outputJsonPath = path.join(outputPath, 'output.json')
 const outputCachePath = path.join(outputPath, 's')
-const outputCacheTemplatePath = path.join(outputPath, 'cache.html')
 
 const ghPath = 'gh-pages'
 const ghCachePath = path.join(ghPath, 's')
-const ghCacheTemplatePath = path.join(ghPath, 'cache.html')
-
 
 const clone = async () => {
   //delete gh-pages folder
@@ -50,7 +49,7 @@ const rsyncCopyDir = (src, dest) => {
   })
 }
 
-export const start = async () => {
+export const start = async (pushAccess) => {
   const hrstart = process.hrtime()
 
   // ############################################
@@ -68,22 +67,25 @@ export const start = async () => {
   // ############################################
   // #### Generate Cache Page and ShortLink
 
-  await generateCacheAndShortLink(true)
+  await cache(true)
+  await build()
 
   // ############################################
   // #### Commit & push
 
-  await rsyncCopyDir(outputCachePath, ghCachePath)
+  if (pushAccess){
+    await rsyncCopyDir(outputCachePath, ghCachePath)
 
-  await gitP(__dirname + '/../gh-pages/').add('.')
-  await gitP(__dirname + '/../gh-pages/').commit("Add cache page")
+    await gitP(__dirname + '/../gh-pages/').add('.')
+    await gitP(__dirname + '/../gh-pages/').commit("Add cache page")
 
-  const status = await gitP(__dirname + '/../gh-pages/').status()
-  if (status.behind || status.ahead) {
-    await gitP(__dirname + '/../gh-pages/').push(['-u', 'origin', 'gh-pages'])
-          .then(console.log('#Push Done.'))
+    const status = await gitP(__dirname + '/../gh-pages/').status()
+    if (status.behind || status.ahead) {
+      await gitP(__dirname + '/../gh-pages/').push(['-u', 'origin', 'gh-pages'])
+            .then(console.log('#Push Done.'))
 
-    await cloudflarePurgeCache(process.env.CF_EMAIL, process.env.CF_KEY, process.env.CF_ZONE_ID)
+      await cloudflarePurgeCache(process.env.CF_EMAIL, process.env.CF_KEY, process.env.CF_ZONE_ID)
+    }
   }
 
   const hrend = process.hrtime(hrstart)
@@ -91,7 +93,14 @@ export const start = async () => {
 }
 
 const main = async () => {
-  await start()
+  try {
+    await start(false)
+    process.exit(0)
+  }
+  catch (e) {
+    console.log(e)
+    process.exit(1)
+  }
 }
 
 if (!module.parent.parent)

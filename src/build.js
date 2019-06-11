@@ -3,8 +3,8 @@ import path from 'path'
 import fs from 'fs'
 import crypto from 'crypto'
 
-import Dett from './dett.js'
-import { parseText } from './utils.js'
+import Dett from './lib/dett.js'
+import { parseText } from './lib/utils.js'
 
 const web3 = new Web3(new Web3.providers.WebsocketProvider('wss://mainnet-rpc.dexon.org/ws'))
 let dett = null
@@ -12,7 +12,6 @@ let dett = null
 const outputPath = 'dist'
 const outputJsonPath = path.join(outputPath, 'output.json')
 const outputCachePath = path.join(outputPath, 's')
-const outputCacheTemplatePath = path.join(outputPath, 'cache.html')
 
 const ghPath = 'gh-pages'
 const ghCacheTemplatePath = path.join(ghPath, 'cache.html')
@@ -68,7 +67,7 @@ const generateShortLinkCachePage = async (tx) => {
   await fs.writeFileSync(filePath, cacheFile, 'utf8')
 }
 
-const build = async () => {
+export const build = async () => {
   loadLocalStorage()
 
   dett = new Dett()

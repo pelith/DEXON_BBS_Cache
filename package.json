@@ -6,11 +6,11 @@
         "build": "npm run clean && babel src/ -d lib/",
         "clean": "rm -rf lib/",
         "dev": "npm run build && node bin/dev",
-        "start": "node bin/index",
         "dev-server": "npm run build && node bin/dev-server",
-        "server": "node bin/server",
-        "cache": "node bin/cache",
-        "build-cache": "node bin/build"
+        "start": "npm run build && node bin/index",
+        "server": "npm run build && node bin/server",
+        "cache": "npm run build && node bin/cache",
+        "build-cache": "npm run build && node bin/build"
     },
     "author": [
         "SiriusTsou",

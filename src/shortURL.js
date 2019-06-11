@@ -1,1 +1,0 @@
-../../src/scripts/shortURL.js

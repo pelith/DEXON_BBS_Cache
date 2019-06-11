@@ -5,9 +5,9 @@ import { pRateLimit } from 'p-ratelimit'
 import fs from 'fs'
 import path from 'path'
 
-import Dett from './dett.js'
-import ShortURL from './shortURL.js'
-import { parseText, awaitTx } from './utils.js'
+import Dett from './lib/dett.js'
+import ShortURL from './lib/shortURL.js'
+import { awaitTx } from './lib/utils.js'
 
 import keythereum from 'keythereum'
 
@@ -115,7 +115,7 @@ const loadLocalStorage = () => {
 }
 
 
-export const generateCacheAndShortLink = async (updateAccess) => {
+export const cache = async (updateAccess) => {
   // ############################################
   // #### init Dett
 
@@ -186,7 +186,7 @@ export const generateCacheAndShortLink = async (updateAccess) => {
 }
 
 const main = async () => {
-  await generateCacheAndShortLink(false)
+  await cache(false)
   process.exit(0)
 }
 
@@ -197,7 +197,6 @@ if (!module.parent.parent)
 // 2.log
 // 3.master env set cache network
 // 4.compress porblem
-// 5.circle ci cache server && need fix src problem
 
 // clean cache
 // await dett.BBSCache.methods.clearMilestone().send({
