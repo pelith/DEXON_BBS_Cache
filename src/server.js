@@ -74,20 +74,19 @@ const server = async () => {
   // ############################################
   // #### Commit & push
 
-  if (pushAccess){
-    await rsyncCopyDir(outputCachePath, ghCachePath)
+  await rsyncCopyDir(outputCachePath, ghCachePath)
 
-    await gitP(__dirname + '/../gh-pages/').add('.')
-    await gitP(__dirname + '/../gh-pages/').commit("Add cache page")
+  await gitP(__dirname + '/../gh-pages/').add('.')
+  await gitP(__dirname + '/../gh-pages/').commit("Add cache page")
 
-    const status = await gitP(__dirname + '/../gh-pages/').status()
-    if (status.behind || status.ahead) {
-      await gitP(__dirname + '/../gh-pages/').push(['-u', 'origin', 'gh-pages'])
-            .then(console.log('#Push Done.'))
+  const status = await gitP(__dirname + '/../gh-pages/').status()
+  if (status.behind || status.ahead) {
+    await gitP(__dirname + '/../gh-pages/').push(['-u', 'origin', 'gh-pages'])
+          .then(console.log('#Push Done.'))
 
-      await cloudflarePurgeCache(process.env.CF_EMAIL, process.env.CF_KEY, process.env.CF_ZONE_ID)
-    }
+    await cloudflarePurgeCache(process.env.CF_EMAIL, process.env.CF_KEY, process.env.CF_ZONE_ID)
   }
+
 
   const hrend = process.hrtime(hrstart)
   console.info(`Execution time (hr): %ds %dms`, hrend[0], hrend[1] / 1000000)
