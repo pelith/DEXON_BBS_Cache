@@ -77,6 +77,9 @@ export const build = async () => {
   if (!(fs.existsSync(outputCachePath) && fs.lstatSync(outputCachePath).isDirectory()))
     fs.mkdirSync(outputCachePath)
 
+  if (!(fs.existsSync(ghCacheTemplatePath) && fs.lstatSync(ghCacheTemplatePath).isFile()))
+    throw "template file is not exist"
+
   const _checksum = checksum(fs.readFileSync(ghCacheTemplatePath))
   const shouldUpdate = _checksum !== jsonData.checksum
 
