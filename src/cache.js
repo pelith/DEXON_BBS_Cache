@@ -164,6 +164,9 @@ export const cache = async (updateAccess) => {
       if (updateAccess)
         await rpcRateLimiter(() => addShortLink(tx, blockNumber))
 
+    if (!(tx in shortLinks))
+      shortLinks[tx] = web3.utils.hexToUtf8(link)
+
     // generate milestone block index
     if (last === blockNumber) {
       index += 1

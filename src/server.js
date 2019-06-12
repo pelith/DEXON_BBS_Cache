@@ -51,6 +51,8 @@ const rsyncCopyDir = (src, dest) => {
 
 
 const server = async () => {
+  console.log("server runing...")
+
   const hrstart = process.hrtime()
 
   // ############################################
@@ -85,8 +87,8 @@ const server = async () => {
           .then(console.log('#Push Done.'))
 
     await cloudflarePurgeCache(process.env.CF_EMAIL, process.env.CF_KEY, process.env.CF_ZONE_ID)
+          .then(console.log('#Cloudflare purge cache Done.'))
   }
-
 
   const hrend = process.hrtime(hrstart)
   console.info(`Execution time (hr): %ds %dms`, hrend[0], hrend[1] / 1000000)
