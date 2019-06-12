@@ -109,3 +109,7 @@ const main = async () => {
 }
 
 main()
+
+process.once('SIGINT',() => {
+    process.exit(0);
+})

@@ -2,7 +2,7 @@ import {cache} from './cache.js'
 import {build} from './build.js'
 
 const start = async () => {
-  // Notice : Should put cache template in gh-pages/content.html
+  // Notice : Should put cache template in gh-pages/cache.html
 
   // ############################################
   // #### Generate Cache Page and ShortLink

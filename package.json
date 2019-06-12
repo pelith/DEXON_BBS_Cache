@@ -1,6 +1,6 @@
 {
     "name": "dexon_bbs_cache",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "description": "",
     "scripts": {
         "build": "npm run clean && babel src/ -d lib/",
