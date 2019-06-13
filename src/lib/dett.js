@@ -125,7 +125,13 @@ class Dett {
 
     this.BBSEvents = await this.BBS.getPastEvents('Posted', {fromBlock : _fromBlock, toBlock: _toBlock})
 
-    return this.BBSEvents.reverse().map(async (event) => {
+    if (fromBlock)
+      this.BBSEvents.splice(0, (+fromBlock.split('-')[1]) + 1)
+
+    if (toBlock)
+      this.BBSEvents.splice(perPageLength, this.BBSEvents.length-perPageLength)
+
+    return this.BBSEvents.map(async (event) => {
       const [article, votes, banned] = await Promise.all([
         this.getArticle(event.transactionHash, false),
         this.getVotes(event.transactionHash),
