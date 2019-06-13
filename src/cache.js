@@ -27,7 +27,6 @@ const outputJsonPath = path.join(outputPath, 'output.json')
 let jsonData = {}
 let shortLinks = {}
 let milestones = []
-let indexes = []
 
 const addShortLink = async (tx) => {
   const shortLink = ShortURL.encode(dett.cacheweb3.utils.hexToNumber(tx.substr(0,10))).padStart(6,'0')
@@ -52,8 +51,7 @@ const addMilestone = async (blockNumber, index) => {
     })
   ).then((receipt) => {
     console.log('#Add Milestone : '+blockNumber+'-'+index)
-    milestones.push(+blockNumber)
-    indexes.push(index)
+    milestones.push(blockNumber+'-'+index)
   })
 }
 
@@ -66,16 +64,15 @@ const syncContract = async () => {
     shortLinks[tx] = web3.utils.hexToUtf8(shortLink)
   }
 
-  milestones = await dett.BBSCache.methods.getMilestones().call()
-  indexes = await dett.BBSCache.methods.getIndexes().call()
   saveLocalStorage()
   console.log('#Sync Done')
 }
 
 const checkSync =  async () => {
-  const _indexes = await dett.BBSCache.methods.getIndexes().call()
-  if (!_indexes.every(e => indexes.includes(e))) {
+  const _milestones = await dett.BBSCache.methods.getMilestones().call()
+  if (!_milestones.every(e => milestones.includes(e))) {
     console.log('#Start Sync')
+    milestones = _milestones
     await syncContract()
   }
 }
@@ -87,7 +84,6 @@ const saveLocalStorage = () => {
 
   jsonData.shortLinks = shortLinks
   jsonData.milestones = milestones
-  jsonData.indexes = indexes
 
   const rawData = JSON.stringify(jsonData, null, 4)
   fs.writeFileSync(outputJsonPath, rawData, 'utf8');
@@ -108,9 +104,6 @@ const loadLocalStorage = () => {
 
     if (jsonData.hasOwnProperty('milestones'))
       milestones = jsonData.milestones
-
-    if (jsonData.hasOwnProperty('indexes'))
-      indexes = jsonData.indexes
   }
 }
 
@@ -135,19 +128,18 @@ export const cache = async (updateAccess) => {
     contractOwner = account.address
     dett.cacheweb3.eth.accounts.wallet.add(account)
   }
+  // await cleanMilestone()
 
   let fromBlock = dett.fromBlock
 
-  const hasLocalMilestones = milestones.length && indexes.length
-
-  if (hasLocalMilestones)
-    fromBlock = +milestones[milestones.length-1]
+  if (milestones.length)
+    fromBlock = +milestones[milestones.length-1].split('-')[0]
 
   let events = await dett.BBS.getPastEvents('Posted', {fromBlock : fromBlock})
 
   // delete lastest cache page block's part
-  if (hasLocalMilestones)
-    events.splice(0, (+indexes[indexes.length-1]) + 1)
+  if (milestones.length)
+    events.splice(0, (+milestones[milestones.length-1].split('-')[1]) + 1)
 
   // ############################################
   // #### Generate Cache && Short link
@@ -177,10 +169,9 @@ export const cache = async (updateAccess) => {
     }
 
     if ((i+1) % dett.perPageLength === 0) {
-      if (!milestones.includes(blockNumber)){
-        if (!(indexes[milestones.indexOf(blockNumber)] === index+''))
-          if (updateAccess)
-            await rpcRateLimiter(() => addMilestone(blockNumber, index))
+      if (!milestones.includes(blockNumber+'-'+index)) {
+        if (updateAccess)
+          await rpcRateLimiter(() => addMilestone(blockNumber, index))
       }
     }
   }
@@ -202,8 +193,14 @@ if (!module.parent.parent)
 // 4.compress porblem
 
 // clean cache
-// await dett.BBSCache.methods.clearMilestone().send({
-//   from: contractOwner,
-//   // gasPrice: 6000000000,
-//   gas: 210000,
-// })
+const cleanMilestone = async () => {
+  await awaitTx(
+    dett.BBSCache.methods.clearMilestone().send({
+      from: contractOwner,
+      gas: 240000,
+    })
+  ).then((receipt) => {
+    console.log('#Clean Milestone Done.')
+  })
+}
+
