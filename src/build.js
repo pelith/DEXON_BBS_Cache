@@ -50,7 +50,7 @@ const saveLocalStorage = () => {
 const generateShortLinkCachePage = async (tx) => {
   const article = await dett.getArticle(tx)
   const title = article.title
-  const url = 'https://dett.cc/' + shortLinks[tx] + '.html'
+  const url = 'https://dett.cc/' + 's/' + shortLinks[tx]
   const description = parseText(article.content, 160).replace(/\n|\r/g, ' ')
   const cacheMeta = { 'Cache - DEXON BBS': title,
                       'https://dett.cc/cache.html': url,
