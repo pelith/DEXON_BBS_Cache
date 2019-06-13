@@ -44,14 +44,15 @@ const addShortLink = async (tx) => {
 }
 
 const addMilestone = async (blockNumber, index) => {
+  const milestone = blockNumber+'-'+index
   await awaitTx(
-    dett.BBSCache.methods.addMilestone(+blockNumber, index).send({
+    dett.BBSCache.methods.addMilestone(web3.utils.utf8ToHex(milestone)).send({
       from: contractOwner,
       gas: 240000,
     })
   ).then((receipt) => {
-    console.log('#Add Milestone : '+blockNumber+'-'+index)
-    milestones.push(blockNumber+'-'+index)
+    console.log('#Add Milestone : '+milestone)
+    milestones.push(milestone)
   })
 }
 
@@ -69,7 +70,11 @@ const syncContract = async () => {
 }
 
 const checkSync =  async () => {
-  const _milestones = await dett.BBSCache.methods.getMilestones().call()
+  let _milestones = await dett.BBSCache.methods.getMilestones().call()
+  _milestones = _milestones.map((milestone) => {
+    return web3.utils.hexToUtf8(milestone)
+  })
+
   if (!_milestones.every(e => milestones.includes(e))) {
     console.log('#Start Sync')
     milestones = _milestones
