@@ -116,16 +116,16 @@ const loadLocalStorage = () => {
 
 const saveSitemap = () => {
   const prefix = 'https://dett.cc'
-  const s = fs.createWriteStream(sitemapPath)
-  sitemapIntro(s)
+  const f = fs.openSync(sitemapPath, 'w')
+  sitemapIntro(f)
   {['/', '/about', '/mayday'].forEach(slug => {
-    sitemapWrite(s, prefix + slug)
+    sitemapWrite(f, prefix + slug)
   })}
-  s.write('  <!-- Static pages below are generated; do not edit -->\n')
+  fs.writeSync(f, '  <!-- Static pages below are generated; do not edit -->\n')
   Object.values(jsonData.shortLinks).forEach(slug => {
-    sitemapWrite(s, prefix + '/s/' + slug)
+    sitemapWrite(f, prefix + '/s/' + slug)
   })
-  sitemapFinalize(s)
+  sitemapFinalize(f)
 }
 
 
