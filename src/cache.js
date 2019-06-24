@@ -5,6 +5,7 @@ import { pRateLimit } from 'p-ratelimit'
 import fs from 'fs'
 import path from 'path'
 
+import { sitemapIntro, sitemapWrite, sitemapFinalize } from './sitemap.js'
 import Dett from './lib/dett.js'
 import ShortURL from './lib/shortURL.js'
 import { awaitTx } from './lib/utils.js'
@@ -23,6 +24,7 @@ const rpcRateLimiter = pRateLimit({
 
 const outputPath = 'dist'
 const outputJsonPath = path.join(outputPath, 'output.json')
+const sitemapPath = path.join(outputPath, 'sitemap.xml')
 
 let jsonData = {}
 let shortLinks = {}
@@ -112,6 +114,20 @@ const loadLocalStorage = () => {
   }
 }
 
+const saveSitemap = () => {
+  const prefix = 'https://dett.cc'
+  const s = fs.createWriteStream(sitemapPath)
+  sitemapIntro(s)
+  {['/', '/about', '/mayday'].forEach(slug => {
+    sitemapWrite(s, prefix + slug)
+  })}
+  s.write('  <!-- Static pages below are generated; do not edit -->\n')
+  Object.values(jsonData.shortLinks).forEach(slug => {
+    sitemapWrite(s, prefix + '/s/' + slug)
+  })
+  sitemapFinalize(s)
+}
+
 
 export const cache = async (updateAccess) => {
   // ############################################
@@ -182,6 +198,8 @@ export const cache = async (updateAccess) => {
   }
 
   saveLocalStorage()
+
+  saveSitemap()
 }
 
 const main = async () => {
