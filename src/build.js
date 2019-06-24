@@ -51,10 +51,16 @@ const generateShortLinkCachePage = async (tx) => {
   const article = await dett.getArticle(tx)
   const title = article.title
   const url = 'https://dett.cc/' + 's/' + shortLinks[tx]
+  // is trimming out title from desc the intended behavior??
   const description = parseText(article.content, 160).replace(/\n|\r/g, ' ')
-  const cacheMeta = { 'Cache - DEXON BBS': title,
-                      'https://dett.cc/cache.html': url,
-                      'Cache Cache Cache Cache Cache': description,
+
+  // TODO: rendering HTML here is more realistic
+
+  const cacheMeta = { 'dett:title': title,
+                      'dett:url': url,
+                      'dett:desc': description,
+                      'dett:post:title': title,
+                      'dett:post:content': article.content,
                       'dett:tx:content': tx }
   const reg = new RegExp(Object.keys(cacheMeta).join("|"),"gi")
   const template = fs.readFileSync(ghCacheTemplatePath, 'utf-8')
