@@ -4,7 +4,7 @@ import fs from 'fs'
 import crypto from 'crypto'
 
 import Dett from './lib/dett.js'
-import { parseText, parseUser, formatPttDateTime } from './lib/utils.js'
+import { parseText, parseUser, htmlEntities, formatPttDateTime } from './lib/utils.js'
 
 const web3 = new Web3(new Web3.providers.WebsocketProvider('wss://mainnet-rpc.dexon.org/ws'))
 let dett = null
@@ -49,20 +49,22 @@ const saveLocalStorage = () => {
 
 const generateShortLinkCachePage = async (tx) => {
   const article = await dett.getArticle(tx)
-  const title = article.title
+  // NOTE THE POTENTIAL XSS HERE!!
+  const titleEscaped = htmlEntities(article.title)
   const url = 'https://dett.cc/' + 's/' + shortLinks[tx]
   // is trimming out title from desc the intended behavior??
-  const description = parseText(article.content, 160).replace(/\n|\r/g, ' ')
+  const description = htmlEntities(parseText(article.content, 160)).replace(/\n|\r/g, ' ')
 
   // TODO: rendering HTML here is more realistic
+  const contentEscaped = htmlEntities(article.content)
 
-  const cacheMeta = { 'dett:title': title,
+  const cacheMeta = { 'dett:title': titleEscaped,
                       'dett:url': url,
-                      'dett:desc': description,
-                      'dett:post:author': parseUser(article.transaction.from, article.authorMeta),
+                      'dett:desc': htmlEntities(description),
+                      'dett:post:author': htmlEntities(parseUser(article.transaction.from, article.authorMeta)),
                       'dett:post:time': formatPttDateTime(article.block.timestamp),
-                      'dett:post:title': title,
-                      'dett:post:content': article.content,
+                      'dett:post:title': titleEscaped,
+                      'dett:post:content': contentEscaped,
                       'dett:tx:content': tx }
   const reg = new RegExp(Object.keys(cacheMeta).join("|"),"gi")
   const template = fs.readFileSync(ghCacheTemplatePath, 'utf-8')
