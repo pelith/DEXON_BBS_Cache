@@ -4,7 +4,7 @@ import fs from 'fs'
 import crypto from 'crypto'
 
 import Dett from './lib/dett.js'
-import { parseText } from './lib/utils.js'
+import { parseText, parseUser, formatPttDateTime } from './lib/utils.js'
 
 const web3 = new Web3(new Web3.providers.WebsocketProvider('wss://mainnet-rpc.dexon.org/ws'))
 let dett = null
@@ -59,6 +59,8 @@ const generateShortLinkCachePage = async (tx) => {
   const cacheMeta = { 'dett:title': title,
                       'dett:url': url,
                       'dett:desc': description,
+                      'dett:post:author': parseUser(article.transaction.from, article.authorMeta),
+                      'dett:post:time': formatPttDateTime(article.block.timestamp),
                       'dett:post:title': title,
                       'dett:post:content': article.content,
                       'dett:tx:content': tx }
