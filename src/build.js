@@ -62,6 +62,7 @@ const generateShortLinkCachePage = async (tx) => {
                       'dett:url': url,
                       'dett:desc': htmlEntities(description),
                       'dett:post:author': htmlEntities(parseUser(article.transaction.from, article.authorMeta)),
+                      'dett:post:time-iso': new Date(article.block.timestamp).toISOString(),
                       'dett:post:time': formatPttDateTime(article.block.timestamp),
                       'dett:post:title': titleEscaped,
                       'dett:post:content': contentEscaped,
