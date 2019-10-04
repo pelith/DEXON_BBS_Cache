@@ -1,6 +1,7 @@
 import Web3 from 'web3'
 import dotenv from 'dotenv/config'
 
+import { CryptoUtils, Client, LoomProvider } from 'loom-js'
 import { pRateLimit } from 'p-ratelimit'
 import fs from 'fs'
 import path from 'path'
@@ -8,13 +9,14 @@ import path from 'path'
 import { sitemapIntro, sitemapWrite, sitemapFinalize } from './sitemap.js'
 import Dett from './lib/dett.js'
 import ShortURL from './lib/shortURL.js'
-import { awaitTx } from './lib/utils.js'
 
-import keythereum from 'keythereum'
-
-const web3 = new Web3(new Web3.providers.WebsocketProvider('wss://mainnet-rpc.dexon.org/ws'))
+const chainId = 'extdev-plasma-us1'
+const writeUrl = 'wss://extdev-plasma-us1.dappchains.com/websocket'
+const readUrl = 'wss://extdev-plasma-us1.dappchains.com/queryws'
+const web3Provider = new Web3.providers.WebsocketProvider('wss://rinkeby.infura.io/ws/v3/')
+const web3 = new Web3(web3Provider)
 let dett = null
-let contractOwner = ''
+let contractOwner = '0x9ffa184a0d0febc143ceaae94cf2a4079cec9349'
 
 const rpcRateLimiter = pRateLimit({
   interval: 2500,
@@ -34,28 +36,20 @@ const addShortLink = async (tx) => {
   const shortLink = ShortURL.encode(dett.cacheweb3.utils.hexToNumber(tx.substr(0,10))).padStart(6,'0')
   const hexId = dett.cacheweb3.utils.padLeft(dett.cacheweb3.utils.toHex(shortLink), 64)
 
-  await awaitTx(
-    dett.BBSCache.methods.link(tx, hexId).send({
-      from: contractOwner,
-      gas: 240000,
-    })
-  ).then((receipt) => {
+  const receipt = await dett.BBSCache.methods.link(tx, hexId).send({ from: contractOwner })
+  if (receipt.status === true) {
     console.log('#Add ShortLink : '+tx+' '+shortLink)
     shortLinks[tx] = shortLink
-  })
+  }
 }
 
 const addMilestone = async (blockNumber, index) => {
   const milestone = blockNumber+'-'+index
-  await awaitTx(
-    dett.BBSCache.methods.addMilestone(web3.utils.utf8ToHex(milestone)).send({
-      from: contractOwner,
-      gas: 240000,
-    })
-  ).then((receipt) => {
+  const receipt = await dett.BBSCache.methods.addMilestone(web3.utils.utf8ToHex(milestone)).send({ from: contractOwner })
+  if (receipt.status === true) {
     console.log('#Add Milestone : '+milestone)
     milestones.push(milestone)
-  })
+  }
 }
 
 const syncContract = async () => {
@@ -72,7 +66,7 @@ const syncContract = async () => {
 }
 
 const checkSync =  async () => {
-  let _milestones = await dett.BBSCache.methods.getMilestones().call()
+  let _milestones = await dett.BBSCache.methods.getMilestones().call({ from: contractOwner })
   _milestones = _milestones.map((milestone) => {
     return web3.utils.hexToUtf8(milestone)
   })
@@ -132,23 +126,16 @@ const saveSitemap = () => {
 export const cache = async (updateAccess) => {
   // ############################################
   // #### init Dett
-
+  const privateKeyStr = process.env.LOOM_PRIVATEKEY
+  const privateKey = CryptoUtils.B64ToUint8Array(privateKeyStr)
+  const client = new Client(chainId, writeUrl, readUrl)
+  const loomProvider = new LoomProvider(client, privateKey)
+  
   dett = new Dett()
-  await dett.init(web3, Web3)
-
+  await dett.init(loomProvider, web3, Web3)
   loadLocalStorage()
 
   await checkSync()
-
-  if (updateAccess) {
-    const keystore = JSON.parse(fs.readFileSync('keystore.json'))
-    const keypassword = process.env.KEY_PASSWORD
-    const privateKey = keythereum.recover(keypassword, keystore)
-
-    const account = dett.cacheweb3.eth.accounts.privateKeyToAccount(`0x${privateKey.toString('hex')}`)
-    contractOwner = account.address
-    dett.cacheweb3.eth.accounts.wallet.add(account)
-  }
   // await cleanMilestone()
 
   let fromBlock = dett.fromBlock
@@ -170,12 +157,12 @@ export const cache = async (updateAccess) => {
   for (const [i, event] of events.entries()) {
     const tx = event.transactionHash
     const blockNumber = event.blockNumber.toString()
-    const link = await dett.BBSCache.methods.links(tx).call()
+    const link = await dett.BBSCache.methods.links(tx).call({ from: contractOwner })
 
     // generate short links
     if (!+(link))
       if (updateAccess)
-        await rpcRateLimiter(() => addShortLink(tx, blockNumber))
+        await addShortLink(tx, blockNumber)
 
     if (!(tx in shortLinks))
       shortLinks[tx] = web3.utils.hexToUtf8(link)
@@ -192,7 +179,7 @@ export const cache = async (updateAccess) => {
     if ((i+1) % dett.perPageLength === 0) {
       if (!milestones.includes(blockNumber+'-'+index)) {
         if (updateAccess)
-          await rpcRateLimiter(() => addMilestone(blockNumber, index))
+          await addMilestone(blockNumber, index)
       }
     }
   }
@@ -217,13 +204,7 @@ if (!module.parent.parent)
 
 // clean cache
 const cleanMilestone = async () => {
-  await awaitTx(
-    dett.BBSCache.methods.clearMilestone().send({
-      from: contractOwner,
-      gas: 240000,
-    })
-  ).then((receipt) => {
-    console.log('#Clean Milestone Done.')
-  })
+  const receipt = await dett.BBSCache.methods.clearMilestone().send({ from: contractOwner })
+  if (receipt.status === true) console.log('#Clean Milestone Done.')
 }
 

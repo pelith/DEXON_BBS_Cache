@@ -25,7 +25,7 @@ const clone = async () => {
     await rimraf.sync('gh-pages')
 
   await gitP().silent(true)
-  .clone('https://github.com/pelith/DEXON_BBS', 'gh-pages', ['--single-branch','--branch','gh-pages'])
+  .clone('git@github.com:Gilg4mesh/LOOM_BBS.git', 'gh-pages', ['--single-branch','--branch','gh-pages'])
   .then(() => console.log('#Clone Done.'))
   .catch((err) => console.error('failed: ', err))
 }

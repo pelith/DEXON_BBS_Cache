@@ -2,11 +2,18 @@ import Web3 from 'web3'
 import path from 'path'
 import fs from 'fs'
 import crypto from 'crypto'
+import { CryptoUtils, Client, LocalAddress, LoomProvider } from 'loom-js'
 
 import Dett from './lib/dett.js'
 import { parseText, parseUser, htmlEntities, formatPttDateTime } from './lib/utils.js'
 
-const web3 = new Web3(new Web3.providers.WebsocketProvider('wss://mainnet-rpc.dexon.org/ws'))
+const chainId = 'extdev-plasma-us1'
+const writeUrl = 'wss://extdev-plasma-us1.dappchains.com/websocket'
+const readUrl = 'wss://extdev-plasma-us1.dappchains.com/queryws'
+const privateKey = CryptoUtils.generatePrivateKey()
+const client = new Client(chainId, writeUrl, readUrl)
+const loomProvider = new LoomProvider(client, privateKey)
+const web3 = new Web3(loomProvider)
 let dett = null
 
 const outputPath = 'dist'
@@ -82,7 +89,7 @@ export const build = async () => {
   loadLocalStorage()
 
   dett = new Dett()
-  await dett.init(web3, Web3)
+  await dett.init(loomProvider, web3, Web3)
 
   // if cache output folder not exist create it
   if (!(fs.existsSync(outputCachePath) && fs.lstatSync(outputCachePath).isDirectory()))
