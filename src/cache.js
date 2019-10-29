@@ -1,20 +1,16 @@
 import Web3 from 'web3'
 import dotenv from 'dotenv/config'
-
-import { CryptoUtils, Client, LoomProvider } from 'loom-js'
+import * as loom from 'loom-js'
 import { pRateLimit } from 'p-ratelimit'
 import fs from 'fs'
 import path from 'path'
 
 import { sitemapIntro, sitemapWrite, sitemapFinalize } from './sitemap.js'
 import Dett from './lib/dett.js'
+import Loom from './lib/loom.js'
 import ShortURL from './lib/shortURL.js'
 
-const chainId = 'extdev-plasma-us1'
-const writeUrl = 'wss://extdev-plasma-us1.dappchains.com/websocket'
-const readUrl = 'wss://extdev-plasma-us1.dappchains.com/queryws'
-const web3Provider = new Web3.providers.WebsocketProvider('wss://rinkeby.infura.io/ws/v3/')
-const web3 = new Web3(web3Provider)
+const web3 = new Web3(new Web3.providers.HttpProvider('https://rinkeby.infura.io/v3/'))
 let dett = null
 let contractOwner = '0x9ffa184a0d0febc143ceaae94cf2a4079cec9349'
 
@@ -126,13 +122,13 @@ const saveSitemap = () => {
 export const cache = async (updateAccess) => {
   // ############################################
   // #### init Dett
-  const privateKeyStr = process.env.LOOM_PRIVATEKEY
-  const privateKey = CryptoUtils.B64ToUint8Array(privateKeyStr)
-  const client = new Client(chainId, writeUrl, readUrl)
-  const loomProvider = new LoomProvider(client, privateKey)
   
+  const loomObj = new Loom(loom, web3.currentProvider)
+  const privateKeyStr = process.env.LOOM_PRIVATEKEY
+  loomObj.initCacheProvider(privateKeyStr)
+
   dett = new Dett()
-  await dett.init(loomProvider, web3, Web3)
+  await dett.init(loomObj, web3, Web3)
   loadLocalStorage()
 
   await checkSync()
