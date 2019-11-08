@@ -112,7 +112,7 @@ const saveSitemap = () => {
   const prefix = 'https://dett.cc'
   const f = fs.openSync(sitemapPath, 'w')
   sitemapIntro(f)
-  {['/', '/about', '/mayday'].forEach(slug => {
+  {['/', '/about'].forEach(slug => {
     sitemapWrite(f, prefix + slug)
   })}
   fs.writeSync(f, '  <!-- Static pages below are generated; do not edit -->\n')
