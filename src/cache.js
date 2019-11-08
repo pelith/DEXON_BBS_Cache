@@ -1,18 +1,18 @@
 import Web3 from 'web3'
 import dotenv from 'dotenv/config'
-import * as loom from 'loom-js'
 import { pRateLimit } from 'p-ratelimit'
 import fs from 'fs'
 import path from 'path'
 
 import { sitemapIntro, sitemapWrite, sitemapFinalize } from './sitemap.js'
 import Dett from './lib/dett.js'
-import Loom from './lib/loom.js'
+import LoomProvider from './loom.js'
 import ShortURL from './lib/shortURL.js'
 
-const web3 = new Web3(new Web3.providers.HttpProvider('https://rinkeby.infura.io/v3/'))
 let dett = null
-let contractOwner = '0x9ffa184a0d0febc143ceaae94cf2a4079cec9349'
+let loomWeb3 = null
+let latestHeight = null
+let contractOwner = '0x2089f8ef830f4414143686ed0dfac4f5bc0ace04'
 
 const rpcRateLimiter = pRateLimit({
   interval: 2500,
@@ -41,7 +41,7 @@ const addShortLink = async (tx) => {
 
 const addMilestone = async (blockNumber, index) => {
   const milestone = blockNumber+'-'+index
-  const receipt = await dett.BBSCache.methods.addMilestone(web3.utils.utf8ToHex(milestone)).send({ from: contractOwner })
+  const receipt = await dett.BBSCache.methods.addMilestone(loomWeb3.utils.utf8ToHex(milestone)).send({ from: contractOwner })
   if (receipt.status === true) {
     console.log('#Add Milestone : '+milestone)
     milestones.push(milestone)
@@ -54,7 +54,7 @@ const syncContract = async () => {
   for (const event of events) {
     const tx = event.returnValues.long
     const shortLink = event.returnValues.short
-    shortLinks[tx] = web3.utils.hexToUtf8(shortLink)
+    shortLinks[tx] = loomWeb3.utils.hexToUtf8(shortLink)
   }
 
   saveLocalStorage()
@@ -64,7 +64,7 @@ const syncContract = async () => {
 const checkSync =  async () => {
   let _milestones = await dett.BBSCache.methods.getMilestones().call({ from: contractOwner })
   _milestones = _milestones.map((milestone) => {
-    return web3.utils.hexToUtf8(milestone)
+    return loomWeb3.utils.hexToUtf8(milestone)
   })
 
   if (!_milestones.every(e => milestones.includes(e))) {
@@ -81,6 +81,7 @@ const saveLocalStorage = () => {
 
   jsonData.shortLinks = shortLinks
   jsonData.milestones = milestones
+  jsonData.latestHeight = latestHeight
 
   const rawData = JSON.stringify(jsonData, null, 4)
   fs.writeFileSync(outputJsonPath, rawData, 'utf8');
@@ -101,6 +102,9 @@ const loadLocalStorage = () => {
 
     if (jsonData.hasOwnProperty('milestones'))
       milestones = jsonData.milestones
+
+    if (jsonData.hasOwnProperty('latestHeight'))
+      latestHeight = jsonData.latestHeight
   }
 }
 
@@ -116,6 +120,15 @@ const saveSitemap = () => {
     sitemapWrite(f, prefix + '/s/' + slug)
   })
   sitemapFinalize(f)
+}  
+
+const mergedArticles = async (articles = [], fromBlock = '14440294', toBlock = 'latest') => {
+  const temp = await dett.BBS.getPastEvents('Posted', {fromBlock : fromBlock, toBlock: toBlock})
+  articles = articles.concat(temp)
+  console.log(`from ${fromBlock} to ${toBlock}, size: ${articles.length}`)
+  latestHeight = fromBlock
+  saveLocalStorage()
+  return articles
 }
 
 
@@ -123,23 +136,36 @@ export const cache = async (updateAccess) => {
   // ############################################
   // #### init Dett
   
-  const loomObj = new Loom(loom, web3.currentProvider)
-  const privateKeyStr = process.env.LOOM_PRIVATEKEY
-  loomObj.initCacheProvider(privateKeyStr)
+  const privateKeyString = process.env.LOOM_PRIVATEKEY
+
+  const loomProvider =  new LoomProvider({
+    chainId: 'default',
+    writeUrl: 'https://loom-basechain.xxxx.nctu.me/rpc',
+    readUrl: 'https://loom-basechain.xxxx.nctu.me/query',
+    libraryName: 'web3.js',
+    web3Api: Web3,
+  })
+  loomProvider.setNetworkOnly(privateKeyString)
 
   dett = new Dett()
-  await dett.init(loomObj, web3, Web3)
+  await dett.init(loomProvider)
+  loomWeb3 = dett.loomProvider.library
   loadLocalStorage()
 
   await checkSync()
   // await cleanMilestone()
 
-  let fromBlock = dett.fromBlock
+  let fromBlock = latestHeight ? latestHeight : dett.fromBlock
+  let currentHeight = await loomWeb3.eth.getBlockNumber()
 
   if (milestones.length)
     fromBlock = +milestones[milestones.length-1].split('-')[0]
 
-  let events = await dett.BBS.getPastEvents('Posted', {fromBlock : fromBlock})
+  let events = []
+  const step = 10000
+  for (let start = fromBlock*1 ; start < currentHeight ; start+=(step+1)) {
+    events = await mergedArticles(events, start, start+step)
+  }
 
   // delete lastest cache page block's part
   if (milestones.length)
@@ -161,7 +187,7 @@ export const cache = async (updateAccess) => {
         await addShortLink(tx, blockNumber)
 
     if (!(tx in shortLinks))
-      shortLinks[tx] = web3.utils.hexToUtf8(link)
+      shortLinks[tx] = loomWeb3.utils.hexToUtf8(link)
 
     // generate milestone block index
     if (last === blockNumber) {

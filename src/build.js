@@ -2,13 +2,11 @@ import Web3 from 'web3'
 import path from 'path'
 import fs from 'fs'
 import crypto from 'crypto'
-import * as loom from 'loom-js'
 
 import Dett from './lib/dett.js'
-import Loom from './lib/loom.js'
+import LoomProvider from './loom.js'
 import { parseText, parseUser, htmlEntities, formatPttDateTime } from './lib/utils.js'
 
-const web3 = new Web3(new Web3.providers.HttpProvider('https://rinkeby.infura.io/v3/'))
 let dett = null
 
 const outputPath = 'dist'
@@ -83,11 +81,17 @@ const generateShortLinkCachePage = async (tx) => {
 export const build = async () => {
   loadLocalStorage()
 
-  const loomObj = new Loom(loom, web3.currentProvider)
-  loomObj.default()
+  const loomProvider =  new LoomProvider({
+    chainId: 'default',
+    writeUrl: 'https://loom-basechain.xxxx.nctu.me/rpc',
+    readUrl: 'https://loom-basechain.xxxx.nctu.me/query',
+    libraryName: 'web3.js',
+    web3Api: Web3,
+  })
+  loomProvider.setNetworkOnly()
 
   dett = new Dett()
-  await dett.init(loomObj, web3, Web3)
+  await dett.init(loomProvider)
 
   // if cache output folder not exist create it
   if (!(fs.existsSync(outputCachePath) && fs.lstatSync(outputCachePath).isDirectory()))
