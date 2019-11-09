@@ -12,6 +12,7 @@ let dett = null
 const outputPath = 'dist'
 const outputJsonPath = path.join(outputPath, 'output.json')
 const outputCachePath = path.join(outputPath, 's')
+const outputPageCachePath = path.join(outputPath, 'p')
 
 const ghPath = 'gh-pages'
 const ghCacheTemplatePath = path.join(ghPath, 'cache.html')
@@ -45,6 +46,20 @@ const loadLocalStorage = () => {
 const saveLocalStorage = () => {
   const rawData = JSON.stringify(jsonData, null, 4)
   fs.writeFileSync(outputJsonPath, rawData, 'utf8');
+}
+
+const savePageCache = () => {
+  // if exist create output folder
+  if (!(fs.existsSync(outputPageCachePath) && fs.lstatSync(outputPageCachePath).isDirectory()))
+    fs.mkdirSync(outputPageCachePath)
+
+  const pageTx = Object.keys(shortLinks)
+  const pageSize = Math.ceil(pageTx.length / 20)
+  for (let page = 0 ; page < pageSize ; page++) {
+    const cacheData = pageTx.slice(page*20, page*20+19)
+    const filePath = path.join(outputPageCachePath, pageSize-page+1 + '.json')
+    fs.writeFileSync(filePath, JSON.stringify(cacheData), 'utf8')
+  }
 }
 
 const generateShortLinkCachePage = async (tx) => {
@@ -114,6 +129,7 @@ export const build = async () => {
   }
 
   saveLocalStorage()
+  savePageCache()
 
   console.log('#Generate Cache Page Done.')
 }
