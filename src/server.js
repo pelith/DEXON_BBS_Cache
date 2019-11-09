@@ -15,9 +15,11 @@ import {build} from './build.js'
 const outputPath = 'dist'
 const outputJsonPath = path.join(outputPath, 'output.json')
 const outputCachePath = path.join(outputPath, 's')
+const outputPageCachePath = path.join(outputPath, 'p')
 
 const ghPath = 'gh-pages'
 const ghCachePath = path.join(ghPath, 's')
+const ghPageCachePath = path.join(ghPath, 'p')
 
 const clone = async () => {
   //delete gh-pages folder
@@ -77,6 +79,7 @@ const server = async () => {
   // #### Commit & push
 
   await rsyncCopyDir(outputCachePath, ghCachePath)
+  await rsyncCopyDir(outputPageCachePath, ghPageCachePath)
 
   await gitP(__dirname + '/../gh-pages/').add('.')
   await gitP(__dirname + '/../gh-pages/').commit("Add cache page")
@@ -86,8 +89,8 @@ const server = async () => {
     await gitP(__dirname + '/../gh-pages/').push(['-u', 'origin', 'gh-pages'])
           .then(console.log('#Push Done.'))
 
-    await cloudflarePurgeCache(process.env.CF_EMAIL, process.env.CF_KEY, process.env.CF_ZONE_ID)
-          .then(console.log('#Cloudflare purge cache Done.'))
+    // await cloudflarePurgeCache(process.env.CF_EMAIL, process.env.CF_KEY, process.env.CF_ZONE_ID)
+    //       .then(console.log('#Cloudflare purge cache Done.'))
   }
 
   const hrend = process.hrtime(hrstart)

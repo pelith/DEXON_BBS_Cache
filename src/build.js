@@ -57,7 +57,7 @@ const savePageCache = () => {
   const pageSize = Math.ceil(pageTx.length / 20)
   for (let page = 0 ; page < pageSize ; page++) {
     const cacheData = pageTx.slice(page*20, page*20+19)
-    const filePath = path.join(outputPageCachePath, pageSize-page+1 + '.json')
+    const filePath = path.join(outputPageCachePath, pageSize-page + '.json')
     fs.writeFileSync(filePath, JSON.stringify(cacheData), 'utf8')
   }
 }
